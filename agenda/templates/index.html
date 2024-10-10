@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda de Contactos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://unpkg.com/nes.css@latest/css/nes.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css?family=Press+Start+2P" rel="stylesheet">
+    <style>
+        body {
+            background-image: url('/static/images/fondo.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-color: black;
+            color: #39ff14;
+            font-family: 'Press Start 2P', cursive;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center; 
+            flex-direction: column; /* Cambiado para alinear verticalmente */
+        }
+
+        #mario {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            transition: bottom 0.3s ease;
+        }
+
+        h1 {
+            position: fixed; /* Mantiene el título en la parte superior */
+            top: 10px; /* Ajusta la distancia desde la parte superior */
+            width: 100%; /* Ocupa el 100% del ancho */
+            text-align: center; /* Centra el texto */
+            margin: 0; /* Elimina el margen por defecto */
+            z-index: 1000; /* Asegura que esté encima de otros elementos */
+        }
+
+        .button-container {
+            margin-top: 32px; /* Ajusta el margen para compensar el título fijo */
+            display: flex;
+            justify-content: center; /* Centra los botones */
+            gap: 10px; /* Espacio entre los botones */
+        }
+
+        .form-container {
+            display: none;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1 class="text-center mb-4">Agenda de Contactos</h1>
+
+    <div class="container">
+        <div class="text-center">
+            <div id="mario" class="nes-mario"></div>
+        </div>
+        <div class="button-container">
+            <button class="btn nes-btn is-primary" id="addContactButton">Agregar Contacto</button>
+            <button class="btn nes-btn is-secondary" id="viewContactsButton">Ver Contactos</button>
+        </div>
+
+        <div class="form-container" id="formContainer">
+            <input type="text" id="nombre" placeholder="Nombre" class="form-control mt-2" />
+            <input type="text" id="telefono" placeholder="Teléfono" class="form-control mt-2" />
+            <input type="text" id="email" placeholder="Email" class="form-control mt-2" />
+            <button class="btn nes-btn is-success mt-2" id="submitContactButton">Guardar contacto</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const mario = document.getElementById('mario');
+
+        document.getElementById('addContactButton').addEventListener('click', function() {
+            document.getElementById('formContainer').style.display = 'block';
+            mario.style.left = '90%';
+        });
+
+        document.getElementById('viewContactsButton').addEventListener('click', function() {
+            window.location.href = '/contactos/';
+        });
+
+        function jump() {
+            mario.style.bottom = '250px'; 
+            setTimeout(() => {
+                mario.style.bottom = '100px'; 
+                simulateClick(); 
+            }, 300);
+        }
+
+        function simulateClick() {
+            const addButton = document.getElementById('addContactButton');
+            const viewButton = document.getElementById('viewContactsButton');
+            const marioRect = mario.getBoundingClientRect();
+
+            const addButtonRect = addButton.getBoundingClientRect();
+            if (
+                marioRect.bottom >= addButtonRect.top &&
+                marioRect.top <= addButtonRect.bottom &&
+                marioRect.left + marioRect.width / 2 >= addButtonRect.left &&
+                marioRect.left + marioRect.width / 2 <= addButtonRect.right
+            ) {
+                addButton.click(); 
+                return; 
+            }
+
+            const viewButtonRect = viewButton.getBoundingClientRect();
+            if (
+                marioRect.bottom >= viewButtonRect.top &&
+                marioRect.top <= viewButtonRect.bottom &&
+                marioRect.left + marioRect.width / 2 >= viewButtonRect.left &&
+                marioRect.left + marioRect.width / 2 <= viewButtonRect.right
+            ) {
+                viewButton.click(); 
+            }
+        }
+
+        window.addEventListener('keydown', function(event) {
+            let position = parseInt(mario.style.left) || 50;
+
+            if (event.key === 'ArrowLeft') {
+                position -= 10; 
+                mario.style.left = position + '%';
+            } else if (event.key === 'ArrowRight') {
+                position += 10; 
+                mario.style.left = position + '%';
+            } else if (event.key === ' ') {
+                jump(); 
+            }
+        });
+
+        document.getElementById('submitContactButton').addEventListener('click', function() {
+            const nuevoNombre = document.getElementById('nombre').value;
+            const nuevoTelefono = document.getElementById('telefono').value;
+            const nuevoEmail = document.getElementById('email').value;
+
+            if (nuevoNombre && nuevoTelefono && nuevoEmail) {
+                const updatedContact = {
+                    nombre: nuevoNombre,
+                    telefono: nuevoTelefono,
+                    email: nuevoEmail
+                };
+
+                fetch('/contactos', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updatedContact)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    document.getElementById('formContainer').style.display = 'none'; 
+                });
+            }
+        });
+    </script>
+</body>
+</html>
