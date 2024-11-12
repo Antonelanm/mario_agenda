@@ -28,12 +28,14 @@ def agregar_contacto():
     cursor = db.cursor()
     cursor.execute("INSERT INTO contactos (nombre, telefono, mail) VALUES (%s, %s, %s)", (nombre, telefono, mail))
     db.commit()
+    id_contacto = cursor.lastrowid  # Obtener el último ID insertado
 
     # Actualizar el archivo JSON
     with open('contactos.json', 'r+') as file:
         contactos = json.load(file)
-        contactos.append({'nombre': nombre, 'telefono': telefono, 'mail': mail})
+        contactos.append({'id': id_contacto, 'nombre': nombre, 'telefono': telefono, 'mail': mail})
         file.seek(0)
+        file.truncate()  # Asegura que se sobrescriba el archivo
         json.dump(contactos, file, indent=4)
 
     flash("¡Contacto guardado con éxito!")
@@ -77,7 +79,7 @@ def editar_contacto(id):
                 contacto['telefono'] = telefono
                 contacto['mail'] = mail
         file.seek(0)
-        file.truncate()
+        file.truncate()  # Asegura que se sobrescriba el archivo
         json.dump(contactos, file, indent=4)
 
     flash("¡Contacto editado con éxito!")
@@ -85,3 +87,4 @@ def editar_contacto(id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
