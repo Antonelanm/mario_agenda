@@ -9,8 +9,8 @@ app.secret_key = 'tu_clave_secreta'
 db = mysql.connector.connect(
     host="localhost",
     user="root",
-    password="tu_contraseña",
-    database="nombre_base_datos"
+    password="Ant0nela",
+    database="agenda_database"
 )
 
 # Ruta para la página principal
