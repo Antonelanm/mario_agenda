@@ -1,72 +1,87 @@
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
-import os
-import json  # Importar json para el manejo de archivos
+from flask import Flask, request, jsonify, flash, redirect, url_for, render_template
+import mysql.connector
+import json
 
-# Inicializar FastAPI
-app = FastAPI()
+app = Flask(__name__)
+app.secret_key = 'tu_clave_secreta'
 
-# Configurar la carpeta de plantillas y archivos estáticos
-templates = Jinja2Templates(directory="templates")
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Configuración de conexión a MySQL
+db = mysql.connector.connect(
+    host="localhost",
+    user="root",
+    password="tu_contraseña",
+    database="nombre_base_datos"
+)
 
-# Definir modelo de entrada para la API
-class ContactCreate(BaseModel):
-    nombre: str
-    telefono: str
-    email: str
+# Ruta para la página principal
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-# Funciones para leer y escribir en el archivo JSON
-def read_contacts_json():
-    try:
-        with open('contacts.json', 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return []
+# Ruta para agregar un contacto
+@app.route('/agregar', methods=['POST'])
+def agregar_contacto():
+    nombre = request.form.get('nombre')
+    telefono = request.form.get('telefono')
+    mail = request.form.get('mail')
 
-def write_contacts_json(contacts):
-    with open('contacts.json', 'w') as f:
-        json.dump(contacts, f, indent=4)
+    cursor = db.cursor()
+    cursor.execute("INSERT INTO contactos (nombre, telefono, mail) VALUES (%s, %s, %s)", (nombre, telefono, mail))
+    db.commit()
 
-# Rutas de la aplicación
-@app.get("/")
-def read_root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    # Actualizar el archivo JSON
+    with open('contactos.json', 'r+') as file:
+        contactos = json.load(file)
+        contactos.append({'nombre': nombre, 'telefono': telefono, 'mail': mail})
+        file.seek(0)
+        json.dump(contactos, file, indent=4)
 
-@app.get("/contactos/")
-def listar_contactos(request: Request):
-    contactos_json = read_contacts_json()  # Leer contactos desde el archivo JSON
-    return templates.TemplateResponse("contactos.html", {"request": request, "contactos": contactos_json})
+    flash("¡Contacto guardado con éxito!")
+    return redirect(url_for('index'))
 
-@app.post("/contactos/")
-def agregar_contacto(contacto: ContactCreate):
-    # Leer el archivo JSON, agregar el nuevo contacto y escribirlo de nuevo
-    contactos_json = read_contacts_json()
-    contactos_json.append(contacto.dict())
-    write_contacts_json(contactos_json)
+# Ruta para eliminar un contacto
+@app.route('/eliminar/<int:id>', methods=['POST'])
+def eliminar_contacto(id):
+    cursor = db.cursor()
+    cursor.execute("DELETE FROM contactos WHERE id = %s", (id,))
+    db.commit()
 
-    return {"message": "Contacto agregado con éxito"}
+    # Eliminar del JSON
+    with open('contactos.json', 'r+') as file:
+        contactos = json.load(file)
+        contactos = [c for c in contactos if c.get('id') != id]
+        file.seek(0)
+        file.truncate()
+        json.dump(contactos, file, indent=4)
 
-@app.put("/contactos/{contact_id}")
-def editar_contacto(contact_id: int, contacto: ContactCreate):
-    contactos_json = read_contacts_json()
-    
-    for c in contactos_json:
-        if c['nombre'] == contact_id:  # Ajusta esto según tu lógica
-            c.update(contacto.dict())
-            write_contacts_json(contactos_json)
-            return {"message": "Contacto actualizado con éxito"}
-    
-    raise HTTPException(status_code=404, detail="Contacto no encontrado")
+    flash("¡Contacto eliminado con éxito!")
+    return redirect(url_for('index'))
 
-@app.delete("/contactos/{contact_id}")
-def eliminar_contacto(contact_id: int):
-    contactos_json = read_contacts_json()
-    contactos_json = [c for c in contactos_json if c['nombre'] != contact_id]  # Ajusta esto según tu lógica
-    write_contacts_json(contactos_json)
+# Ruta para editar un contacto
+@app.route('/editar/<int:id>', methods=['POST'])
+def editar_contacto(id):
+    nombre = request.form.get('nombre')
+    telefono = request.form.get('telefono')
+    mail = request.form.get('mail')
 
-    return {"message": "Contacto eliminado con éxito"}
+    cursor = db.cursor()
+    cursor.execute("UPDATE contactos SET nombre = %s, telefono = %s, mail = %s WHERE id = %s", (nombre, telefono, mail, id))
+    db.commit()
 
+    # Actualizar en JSON
+    with open('contactos.json', 'r+') as file:
+        contactos = json.load(file)
+        for contacto in contactos:
+            if contacto.get('id') == id:
+                contacto['nombre'] = nombre
+                contacto['telefono'] = telefono
+                contacto['mail'] = mail
+        file.seek(0)
+        file.truncate()
+        json.dump(contactos, file, indent=4)
 
+    flash("¡Contacto editado con éxito!")
+    return redirect(url_for('index'))
+
+if __name__ == '__main__':
+    app.run(debug=True)
